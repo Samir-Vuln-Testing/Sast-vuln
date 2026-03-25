@@ -2,97 +2,145 @@ define([], function() {
 
     var storedCodeExecutor = {
 
-        storeAndExecuteUserScript: function() {
+        storeUserData: function() {
             var userInput = frmExecutor.txtUserInput.text;
-            kony.store.setItem("stored_script", userInput);
-            var storedScript = kony.store.getItem("stored_script");
-            eval(storedScript);
+            kony.store.setItem("stored_data", userInput);
+
+            // ✅ Just display safely (no execution)
+            kony.print("Stored Data: " + userInput);
         },
 
-        storeAndExecuteExpression: function() {
+        evaluateExpressionSafely: function() {
             var userExpression = frmExecutor.txtUserInput.text;
-            kony.store.setItem("stored_expression", userExpression);
-            var storedExpression = kony.store.getItem("stored_expression");
-            var executableCode   = "var result = " + storedExpression + "; kony.print(result);";
-            eval(executableCode);
+
+            // ❌ No eval → only allow numbers
+            if (!/^[0-9+\-*/ ().]+$/.test(userExpression)) {
+                kony.print("Invalid expression");
+                return;
+            }
+
+            try {
+                // Still controlled
+                var result = Function('"use strict"; return (' + userExpression + ')')();
+                kony.print(result);
+            } catch (e) {
+                kony.print("Error evaluating expression");
+            }
         },
 
-        storeAndBuildFunction: function() {
-            var userCode = frmExecutor.txtUserInput.text;
-            kony.store.setItem("stored_function", userCode);
-            var storedCode = kony.store.getItem("stored_function");
-            var dynamicFn  = new Function("return " + storedCode);
-            dynamicFn();
+        storeAction: function() {
+            var action = frmExecutor.txtAction.text;
+
+            // ✅ Whitelist allowed actions
+            var allowedActions = ["printHello", "printDate"];
+
+            if (!allowedActions.includes(action)) {
+                kony.print("Invalid action");
+                return;
+            }
+
+            kony.store.setItem("stored_action", action);
+            this.execute(action);
         },
 
-        storeAndScheduleAction: function() {
-            var userAction = frmExecutor.txtAction.text;
-            var userDelay  = frmExecutor.txtDelay.text;
-            kony.store.setItem("stored_action", userAction);
-            kony.store.setItem("stored_delay",  userDelay);
-            var storedAction = kony.store.getItem("stored_action");
-            var storedDelay  = kony.store.getItem("stored_delay");
-            var codeToRun    = "storedCodeExecutor.execute('" + storedAction + "')";
-            setTimeout(codeToRun, parseInt(storedDelay));
+        execute: function(action) {
+            switch (action) {
+                case "printHello":
+                    kony.print("Hello");
+                    break;
+                case "printDate":
+                    kony.print(new Date());
+                    break;
+                default:
+                    kony.print("Unknown action");
+            }
         },
 
-        storeAndStartPolling: function() {
-            var pollingScript = frmExecutor.txtUserInput.text;
-            var interval      = frmExecutor.txtDelay.text;
-            kony.store.setItem("stored_polling_script", pollingScript);
-            kony.store.setItem("stored_interval",       interval);
-            var storedScript   = kony.store.getItem("stored_polling_script");
-            var storedInterval = kony.store.getItem("stored_interval");
-            setInterval(storedScript, parseInt(storedInterval));
+        scheduleAction: function() {
+            var delay = parseInt(frmExecutor.txtDelay.text);
+
+            if (isNaN(delay) || delay < 0) {
+                kony.print("Invalid delay");
+                return;
+            }
+
+            setTimeout(function() {
+                kony.print("Scheduled action executed");
+            }, delay);
         },
 
-        storeServerResponseAndExecute: function(response) {
-            var serverScript = response.script;
-            kony.store.setItem("stored_server_script", serverScript);
-            var storedServerScript = kony.store.getItem("stored_server_script");
-            eval(storedServerScript);
+        pollingSafe: function() {
+            var interval = parseInt(frmExecutor.txtDelay.text);
+
+            if (isNaN(interval) || interval < 0) {
+                kony.print("Invalid interval");
+                return;
+            }
+
+            setInterval(function() {
+                kony.print("Polling...");
+            }, interval);
         },
 
-        storeAndLoadExternalScript: function() {
-            var userURL     = frmExecutor.txtUserInput.text;
-            var userPayload = frmExecutor.txtMethodArgs.text;
-            kony.store.setItem("stored_url",     userURL);
-            kony.store.setItem("stored_payload", userPayload);
-            var storedURL     = kony.store.getItem("stored_url");
-            var storedPayload = kony.store.getItem("stored_payload");
-            var scriptTag     = "<script src='" + storedURL + "'>" + storedPayload + "<\/script>";
-            frmExecutor.wbvContent.html = scriptTag;
+        handleServerResponse: function(response) {
+            // ❌ Never execute server script
+            // ✅ Just treat as data
+            kony.print("Received response: " + JSON.stringify(response));
         },
 
-        storeAndExecuteBatchCommands: function() {
+        loadExternalScriptSafely: function() {
+            var url = frmExecutor.txtUserInput.text;
+
+            // ✅ Allow only trusted domains
+            if (!url.startsWith("https://trusted-domain.com")) {
+                kony.print("Untrusted URL blocked");
+                return;
+            }
+
+            frmExecutor.wbvContent.html = "<script src='" + url + "'><\/script>";
+        },
+
+        processBatchCommands: function() {
             var rawInput = frmExecutor.txtCommands.text;
-            kony.store.setItem("stored_commands", rawInput);
-            var storedInput  = kony.store.getItem("stored_commands");
-            var storedCmds   = JSON.parse(storedInput);
-            storedCmds.forEach(function(cmd) {
-                eval(cmd);
-            });
+
+            try {
+                var cmds = JSON.parse(rawInput);
+
+                // ✅ Only log commands, do not execute
+                cmds.forEach(function(cmd) {
+                    kony.print("Command: " + cmd);
+                });
+
+            } catch (e) {
+                kony.print("Invalid JSON");
+            }
         },
 
-        storeAndInvokeModuleMethod: function() {
+        invokeSafeMethod: function() {
             var methodName = frmExecutor.txtMethodName.text;
-            var methodArgs = frmExecutor.txtMethodArgs.text;
-            kony.store.setItem("stored_method", methodName);
-            kony.store.setItem("stored_args",   methodArgs);
-            var storedMethod     = kony.store.getItem("stored_method");
-            var storedArgs       = kony.store.getItem("stored_args");
-            var callExpression   = "storedCodeExecutor." + storedMethod + "(" + storedArgs + ")";
-            eval(callExpression);
+
+            var allowedMethods = {
+                sayHi: function() { kony.print("Hi"); },
+                sayBye: function() { kony.print("Bye"); }
+            };
+
+            if (allowedMethods[methodName]) {
+                allowedMethods[methodName]();
+            } else {
+                kony.print("Invalid method");
+            }
         },
 
-        storeProfileAndExecute: function() {
+        storeProfile: function() {
             var userProfile = frmExecutor.txtUserInput.text;
-            kony.store.setItem("user_profile_script", userProfile);
-            var profileScript = kony.store.getItem("user_profile_script");
-            var execCode      = "var profile = " + profileScript + "; kony.print(profile.name);";
-            eval(execCode);
-        }
 
+            try {
+                var profile = JSON.parse(userProfile);
+                kony.print(profile.name || "No name");
+            } catch (e) {
+                kony.print("Invalid profile format");
+            }
+        }
     };
 
     return storedCodeExecutor;
