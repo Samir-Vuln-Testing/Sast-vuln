@@ -1,5 +1,3 @@
-
-
 import React, { Component } from 'react';
 
 class AccountComponent extends Component {
@@ -22,13 +20,34 @@ class AccountComponent extends Component {
             accountId,
             (result, event) => {
                 if (event.status) {
-                    
-                    eval(result.script);
+
+                    // ✅ SAFE: No eval
+                    this.handleServerAction(result);
 
                     this.setState({ accountData: result });
                 }
             }
         );
+    }
+
+    /**
+     * ✅ Controlled handling of server-driven behavior
+     * Only predefined actions are allowed
+     */
+    handleServerAction(result) {
+        if (!result || !result.action) return;
+
+        const actions = {
+            SHOW_ALERT: (payload) => alert(payload),
+            LOG: (payload) => console.log(payload),
+            // Add more SAFE actions if needed
+        };
+
+        if (actions[result.action]) {
+            actions[result.action](result.payload);
+        } else {
+            console.warn('Unknown action received from server:', result.action);
+        }
     }
 
     render() {
@@ -44,4 +63,3 @@ class AccountComponent extends Component {
 }
 
 export default AccountComponent;
-
